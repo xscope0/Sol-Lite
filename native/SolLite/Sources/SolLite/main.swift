@@ -109,9 +109,7 @@ final class AppIndex {
 
     private func utilityItems() -> [LauncherItem] {
         [
-            LauncherItem(title: "Empty Trash", subtitle: "Permanently empty the Trash") {
-                NSAppleScript(source: "tell application \"Finder\" to empty trash")?.executeAndReturnError(nil)
-            },
+            LauncherItem(title: "Empty Trash", subtitle: "Permanently empty the Trash", action: Self.emptyTrash),
             LauncherItem(title: "Copy Wi-Fi Password", subtitle: "Copy current network password to clipboard") {
                 Self.copyCurrentWiFiPassword()
             },
@@ -120,6 +118,30 @@ final class AppIndex {
             LauncherItem(title: "Scripts Folder", subtitle: Self.scriptsURL.path) { NSWorkspace.shared.open(Self.scriptsURL) },
             LauncherItem(title: "Reload Index", subtitle: "Refresh apps and scripts") { [weak self] in self?.reload() }
         ]
+    }
+
+    private static func emptyTrash() {
+        let trashURL = URL(fileURLWithPath: NSString(string: "~/.Trash").expandingTildeInPath, isDirectory: true)
+        do {
+            let urls = try FileManager.default.contentsOfDirectory(at: trashURL, includingPropertiesForKeys: nil)
+            let failures = urls.filter { url in
+                do {
+                    try FileManager.default.removeItem(at: url)
+                    return false
+                } catch {
+                    return true
+                }
+            }
+            if !failures.isEmpty { showError("Could not empty \(failures.count) Trash item(s).") }
+        } catch {
+            showError("Could not read Trash.")
+        }
+    }
+
+    private static func showError(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.runModal()
     }
 
     private static func copyCurrentWiFiPassword() {
