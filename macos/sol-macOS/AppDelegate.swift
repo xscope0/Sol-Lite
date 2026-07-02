@@ -1,12 +1,10 @@
 import EventKit
 import Foundation
 import React_RCTAppDelegate
-import Sparkle
 
 @NSApplicationMain
 @objc
 class AppDelegate: RCTAppDelegate {
-  private var updaterController: SPUStandardUpdaterController!
   private var mediaKeyForwarder: MediaKeyForwarder!
   private let imagesPasteboardDirectory: URL = {
     let home = FileManager.default.homeDirectoryForCurrentUser
@@ -21,15 +19,6 @@ class AppDelegate: RCTAppDelegate {
     (.tiff, "tiff"),
   ]
   private let supportedImageFileExtensions = Set(["png", "jpg", "jpeg"])
-
-  override init() {
-    updaterController = SPUStandardUpdaterController(
-      startingUpdater: true,
-      updaterDelegate: nil,
-      userDriverDelegate: nil
-    )
-    super.init()
-  }
 
   required init?(coder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
@@ -83,11 +72,6 @@ class AppDelegate: RCTAppDelegate {
     PanelManager.shared.showWindow()
   }
 
-  func checkForUpdates() {
-    DispatchQueue.main.async {
-      self.updaterController.checkForUpdates(self)
-    }
-  }
 
   func setupPasteboardListener() {
     createImagesPasteboardDirectoryIfNeeded()

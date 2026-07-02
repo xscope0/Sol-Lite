@@ -1,6 +1,5 @@
 import Cocoa
 import CoreServices
-import Sentry
 
 class Application {
   public var name: String
@@ -184,8 +183,6 @@ class Application {
       //      let breadcrumb = Breadcrumb(level: .error, category: "custom")
       //      breadcrumb.message =
       //        "Failed to start watching application folders: \(error.localizedDescription)"
-      //      SentrySDK.addBreadcrumb(breadcrumb)
-      //      SentrySDK.capture(error: error)
       print("💔 COuld not watch applications")
     }
   }
@@ -273,10 +270,7 @@ class Application {
         appUrls.append(contentsOf: getApplicationUrlsAt(directory))
       }
     } catch {
-      let breadcrumb = Breadcrumb(level: .info, category: "custom")
-      breadcrumb.message = "Error getting all applications at localDomainMask"
-      SentrySDK.addBreadcrumb(breadcrumb)
-      SentrySDK.capture(error: error)
+      print("Error getting all applications: \(error.localizedDescription)")
     }
 
     var applications = [String: Application]()
@@ -317,11 +311,7 @@ class Application {
             name: name, localizedName: localizedName, url: urlStr, isRunning: false)
         }
       } catch {
-        let breadcrumb = Breadcrumb(level: .info, category: "custom")
-        breadcrumb.message =
-          "Error resolving info for application at \(url): \(error.localizedDescription)"
-        SentrySDK.addBreadcrumb(breadcrumb)
-        SentrySDK.capture(error: error)
+        print("Error resolving info for application at \(url): \(error.localizedDescription)")
       }
     }
 
@@ -419,11 +409,7 @@ class Application {
         return []
       }
 
-      let breadcrumb = Breadcrumb(level: .info, category: "custom")
-      breadcrumb.message =
-        "Could not resolve apps url at \(url): \(error.localizedDescription)"
-      SentrySDK.addBreadcrumb(breadcrumb)
-      SentrySDK.capture(error: error)
+      print("Could not resolve apps url at \(url): \(error.localizedDescription)")
       return []
     }
   }

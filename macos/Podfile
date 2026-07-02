@@ -24,7 +24,6 @@ target 'macOS' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  pod 'Sparkle'
   pod 'HotKey'
 
   post_install do |installer|

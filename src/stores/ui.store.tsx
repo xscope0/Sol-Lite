@@ -1,4 +1,3 @@
-import * as Sentry from "@sentry/react-native";
 import { Assets } from "assets";
 import { Parser } from "expr-eval";
 import { CONSTANTS } from "lib/constants";
@@ -187,7 +186,7 @@ export const createUIStore = (root: IRootStore) => {
 		try {
 			writePersistedUIState(getPersistedUISnapshot());
 		} catch (e) {
-			Sentry.captureException(e);
+			console.error("Failed to persist UI state", e);
 		}
 	};
 

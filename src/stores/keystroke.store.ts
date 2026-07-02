@@ -155,21 +155,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 							}
 
 							if (!root.ui.query) {
-								if (!root.ui.hasDismissedGettingStarted) {
-									Linking.openURL(
-										"https://sol.ospfranco.com/getting_started",
-									).catch((e) => {
-										solNative.showToast(
-											`Could not open URL: https://sol.ospfranco.com/getting_started, error: ${e}`,
-											"error",
-										);
-									});
-									solNative.hideWindow();
-									root.ui.setHasDismissedGettingStarted(true);
-									return;
-								}
-
-
 								return;
 							}
 

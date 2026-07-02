@@ -2547,41 +2547,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSentry (8.7.0):
-    - boost
-    - DoubleConversion
-    - fast_float
-    - fmt
-    - glog
-    - hermes-engine
-    - RCT-Folly
-    - RCT-Folly/Fabric
-    - RCTRequired
-    - RCTTypeSafety
-    - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-hermes
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - Sentry (= 9.8.0)
-    - SocketRocket
-    - Yoga
-  - Sentry (9.8.0):
-    - Sentry/Core (= 9.8.0)
-  - Sentry/Core (9.8.0)
   - SocketRocket (0.7.1)
-  - Sparkle (2.9.3)
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -2661,17 +2627,13 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native-macos/ReactCommon`)
   - RestartNewArch (from `../node_modules/react-native-restart-newarch`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
-  - "RNSentry (from `../node_modules/@sentry/react-native`)"
   - SocketRocket (~> 0.7.1)
-  - Sparkle
   - Yoga (from `../node_modules/react-native-macos/ReactCommon/yoga`)
 
 SPEC REPOS:
   trunk:
     - HotKey
-    - Sentry
     - SocketRocket
-    - Sparkle
 
 EXTERNAL SOURCES:
   boost:
@@ -2823,8 +2785,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-restart-newarch"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
-  RNSentry:
-    :path: "../node_modules/@sentry/react-native"
   Yoga:
     :path: "../node_modules/react-native-macos/ReactCommon/yoga"
 
@@ -2904,12 +2864,9 @@ SPEC CHECKSUMS:
   ReactCommon: b2b6ff304cf01e1b67d8e9646e34d58320be0964
   RestartNewArch: da0a57c408cc149df50dfd5c132022d35091c9a0
   RNReanimated: 9af1b9f7d221d1cc2f99d935bab08419cae7c1ce
-  RNSentry: d9c281d2d09d7906fa9d783c4ecef80182c7db40
-  Sentry: 88746bf877eff714bc45315a39ad1d1efea2cdda
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  Sparkle: 39dbdf28637f6056fbf5ee6494bdbfae54f49f41
   Yoga: 8a0df683a71bee13fe0b9d8b653d1a062ff65b2e
 
-PODFILE CHECKSUM: 6573b8f5fcaa36fa2aeef89a9b57d32c7fc47747
+PODFILE CHECKSUM: 1039476df0eacd24919e938ab8cde88bf740ad8f
 
 COCOAPODS: 1.16.2

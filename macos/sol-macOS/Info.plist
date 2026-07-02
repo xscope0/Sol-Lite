@@ -65,9 +65,5 @@
 	<string>Sol needs permissions to read bookmarks and other files</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
-	<key>SUFeedURL</key>
-	<string>https://raw.githubusercontent.com/ospfranco/sol/main/releases/appcast.xml</string>
-	<key>SUPublicEDKey</key>
-	<string>K+wkzEuPN5g0KIQQTxQIVrZAWfMoowpia/yAopR7sMk=</string>
 </dict>
 </plist>
