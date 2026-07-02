@@ -258,15 +258,9 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         icon.translatesAutoresizingMaskIntoConstraints = false
 
         let title = NSTextField(labelWithString: items[row].title)
-        let subtitle = NSTextField(labelWithString: items[row].subtitle)
-        subtitle.textColor = .secondaryLabelColor
-        subtitle.font = .systemFont(ofSize: 11)
+        title.font = .systemFont(ofSize: 15, weight: .medium)
 
-        let textStack = NSStackView(views: [title, subtitle])
-        textStack.orientation = .vertical
-        textStack.spacing = 2
-
-        let stack = NSStackView(views: [icon, textStack])
+        let stack = NSStackView(views: [icon, title])
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 10
@@ -304,11 +298,14 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
     }
 }
 
-final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate {
+final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
     private static var current: ProcessKiller?
     private let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 460), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+    private let searchField = NSSearchField(frame: .zero)
     private let tableView = NSTableView(frame: .zero)
+    private var eventMonitor: Any?
     private var rows: [(pid: Int32, command: String)] = []
+    private var filteredRows: [(pid: Int32, command: String)] = []
 
     static func show() {
         current = ProcessKiller()
@@ -318,25 +315,68 @@ final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NS
     private override init() {
         super.init()
         rows = Self.processes()
+        filteredRows = rows
         window.title = "Kill Process"
         window.delegate = self
+
+        searchField.delegate = self
+        searchField.placeholderString = "Search processes"
+        searchField.target = self
+        searchField.action = #selector(queryChanged)
+
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("process"))
         column.title = "Process"
         tableView.addTableColumn(column)
+        tableView.headerView = nil
         tableView.delegate = self
         tableView.dataSource = self
         tableView.doubleAction = #selector(killSelection)
-        let scroll = NSScrollView(frame: window.contentView?.bounds ?? .zero)
-        scroll.autoresizingMask = [.width, .height]
+        tableView.rowHeight = 44
+
+        let scroll = NSScrollView(frame: .zero)
         scroll.documentView = tableView
         scroll.hasVerticalScroller = true
-        window.contentView?.addSubview(scroll)
+
+        let stack = NSStackView(views: [searchField, scroll])
+        stack.orientation = .vertical
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        window.contentView?.addSubview(stack)
+        if let content = window.contentView {
+            NSLayoutConstraint.activate([
+                stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
+                stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
+                stack.topAnchor.constraint(equalTo: content.topAnchor, constant: 14),
+                stack.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -14),
+                searchField.heightAnchor.constraint(equalToConstant: 36)
+            ])
+        }
     }
 
     private func show() {
         window.center()
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        searchField.becomeFirstResponder()
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            switch event.keyCode {
+            case 36:
+                self.killSelection()
+                return nil
+            case 53:
+                self.window.close()
+                return nil
+            case 125:
+                self.moveSelection(by: 1)
+                return nil
+            case 126:
+                self.moveSelection(by: -1)
+                return nil
+            default:
+                return event
+            }
+        }
     }
 
     private static func processes() -> [(Int32, String)] {
@@ -357,20 +397,69 @@ final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NS
         }
     }
 
-    func numberOfRows(in tableView: NSTableView) -> Int { rows.count }
+    func numberOfRows(in tableView: NSTableView) -> Int { filteredRows.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        NSTextField(labelWithString: "\(rows[row].pid)  \(rows[row].command)")
+        let cell = NSTableCellView()
+        let icon = NSImageView(frame: .zero)
+        let process = filteredRows[row]
+        icon.image = NSWorkspace.shared.icon(forFile: process.command)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = NSTextField(labelWithString: Self.processName(from: process.command))
+        title.font = .systemFont(ofSize: 15, weight: .medium)
+
+        let stack = NSStackView(views: [icon, title])
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        cell.addSubview(stack)
+        NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: 28),
+            icon.heightAnchor.constraint(equalToConstant: 28),
+            stack.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 8),
+            stack.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -8),
+            stack.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
+        ])
+        return cell
+    }
+
+    private static func processName(from command: String) -> String {
+        URL(fileURLWithPath: command).deletingPathExtension().lastPathComponent
+    }
+
+    @objc private func queryChanged() {
+        let query = searchField.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        filteredRows = query.isEmpty ? rows : rows.filter { row in
+            Self.processName(from: row.command).localizedCaseInsensitiveContains(query)
+        }
+        tableView.reloadData()
+        if !filteredRows.isEmpty { tableView.selectRowIndexes(IndexSet(integer: 0), byExtendingSelection: false) }
+    }
+
+    private func moveSelection(by delta: Int) {
+        guard !filteredRows.isEmpty else { return }
+        let selectedRow = tableView.selectedRow >= 0 ? tableView.selectedRow : 0
+        let nextRow = min(max(selectedRow + delta, 0), filteredRows.count - 1)
+        tableView.selectRowIndexes(IndexSet(integer: nextRow), byExtendingSelection: false)
+        tableView.scrollRowToVisible(nextRow)
     }
 
     @objc private func killSelection() {
         let row = tableView.selectedRow
-        guard rows.indices.contains(row) else { return }
-        kill(rows[row].pid, SIGTERM)
+        guard filteredRows.indices.contains(row) else { return }
+        kill(filteredRows[row].pid, SIGTERM)
         window.close()
     }
 
-    func windowWillClose(_ notification: Notification) { Self.current = nil }
+    func windowWillClose(_ notification: Notification) {
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
+        }
+        Self.current = nil
+    }
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
