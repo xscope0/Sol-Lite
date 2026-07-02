@@ -32,6 +32,8 @@ final class HotKey {
 }
 
 final class AppIndex {
+    private static let configURL = URL(fileURLWithPath: NSString(string: "~/.config/sol/config.json").expandingTildeInPath)
+    private static let scriptsURL = URL(fileURLWithPath: NSString(string: "~/.config/sol/scripts").expandingTildeInPath)
     private var apps: [LauncherItem] = []
 
     init() {
@@ -39,7 +41,7 @@ final class AppIndex {
     }
 
     func reload() {
-        apps = applicationItems() + scriptItems() + utilityItems()
+        apps = utilityItems() + quickLinkItems() + scriptItems() + applicationItems()
     }
 
     func search(_ query: String) -> [LauncherItem] {
@@ -71,7 +73,7 @@ final class AppIndex {
     }
 
     private func scriptItems() -> [LauncherItem] {
-        let scriptsDir = URL(fileURLWithPath: NSString(string: "~/.config/sol/scripts").expandingTildeInPath)
+        let scriptsDir = Self.scriptsURL
         guard let urls = try? FileManager.default.contentsOfDirectory(at: scriptsDir, includingPropertiesForKeys: nil) else { return [] }
         return urls.filter { ["sh", "applescript", "scpt"].contains($0.pathExtension) }.map { url in
             let title = url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-", with: " ")
@@ -88,6 +90,23 @@ final class AppIndex {
         }.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
+    private func quickLinkItems() -> [LauncherItem] {
+        guard let data = try? Data(contentsOf: Self.configURL),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
+        let shortcutURLs = (object["shortcuts"] as? [String: Any] ?? [:]).keys
+        let customURLs = (object["customItems"] as? [[String: Any]] ?? []).compactMap { item in
+            item["url"] as? String ?? item["path"] as? String
+        }
+        return (Array(shortcutURLs) + customURLs).compactMap { raw in
+            guard raw.hasPrefix("file://") || raw.hasPrefix("http://") || raw.hasPrefix("https://") else { return nil }
+            guard let url = URL(string: raw) else { return nil }
+            let title = url.isFileURL ? url.deletingPathExtension().lastPathComponent : (url.host ?? raw)
+            return LauncherItem(title: title, subtitle: raw) {
+                NSWorkspace.shared.open(url)
+            }
+        }.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+    }
+
     private func utilityItems() -> [LauncherItem] {
         [
             LauncherItem(title: "Empty Trash", subtitle: "Permanently empty the Trash") {
@@ -97,6 +116,8 @@ final class AppIndex {
                 Self.copyCurrentWiFiPassword()
             },
             LauncherItem(title: "Kill Process", subtitle: "Open process killer", action: ProcessKiller.show),
+            LauncherItem(title: "Settings", subtitle: Self.configURL.path, action: SettingsWindow.show),
+            LauncherItem(title: "Scripts Folder", subtitle: Self.scriptsURL.path) { NSWorkspace.shared.open(Self.scriptsURL) },
             LauncherItem(title: "Reload Index", subtitle: "Refresh apps and scripts") { [weak self] in self?.reload() }
         ]
     }
@@ -126,6 +147,21 @@ final class AppIndex {
     }
 }
 
+enum Style {
+    static let background = NSColor(calibratedWhite: 0, alpha: 0.86)
+    static let row = NSColor(calibratedWhite: 1, alpha: 0.06)
+    static let text = NSColor(calibratedWhite: 0.96, alpha: 1)
+
+    static func apply(to window: NSWindow) {
+        window.isOpaque = false
+        window.backgroundColor = background
+        window.titlebarAppearsTransparent = true
+        window.contentView?.wantsLayer = true
+        window.contentView?.layer?.backgroundColor = background.cgColor
+        window.contentView?.layer?.cornerRadius = 18
+    }
+}
+
 final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
     private let searchField = NSSearchField(frame: .zero)
     private let tableView = NSTableView(frame: .zero)
@@ -141,7 +177,7 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         window.level = .floating
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
-        window.backgroundColor = .windowBackgroundColor
+        Style.apply(to: window)
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         super.init(window: window)
         buildUI()
@@ -160,6 +196,15 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         refresh()
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if modifiers == .command, event.keyCode == 0 {
+                self.searchField.selectText(nil)
+                return nil
+            }
+            if modifiers == .command, event.keyCode == 43 {
+                SettingsWindow.show()
+                return nil
+            }
             switch event.keyCode {
             case 36:
                 self.openSelection()
@@ -190,7 +235,8 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
     private func buildUI() {
         guard let content = window?.contentView else { return }
         searchField.delegate = self
-        searchField.placeholderString = "Search apps, scripts, processes"
+        searchField.placeholderString = "Search apps, scripts, quick links"
+        searchField.textColor = Style.text
         searchField.target = self
         searchField.action = #selector(queryChanged)
 
@@ -203,6 +249,9 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         tableView.target = self
         tableView.doubleAction = #selector(openSelection)
         tableView.rowHeight = 44
+        tableView.backgroundColor = .clear
+        tableView.selectionHighlightStyle = .regular
+        scrollView.drawsBackground = false
         scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
 
@@ -259,6 +308,7 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
 
         let title = NSTextField(labelWithString: items[row].title)
         title.font = .systemFont(ofSize: 15, weight: .medium)
+        title.textColor = Style.text
 
         let stack = NSStackView(views: [icon, title])
         stack.orientation = .horizontal
@@ -298,6 +348,58 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
     }
 }
 
+final class SettingsWindow: NSObject, NSWindowDelegate {
+    private static var current: SettingsWindow?
+    private let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 360, height: 180), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+
+    static func show() {
+        if let current {
+            current.show()
+            return
+        }
+        current = SettingsWindow()
+        current?.show()
+    }
+
+    private override init() {
+        super.init()
+        window.title = "Settings"
+        window.delegate = self
+        Style.apply(to: window)
+
+        let configButton = NSButton(title: "Open config.json", target: self, action: #selector(openConfig))
+        let scriptsButton = NSButton(title: "Open scripts folder", target: self, action: #selector(openScripts))
+        let stack = NSStackView(views: [configButton, scriptsButton])
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 14
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        window.contentView?.addSubview(stack)
+        if let content = window.contentView {
+            NSLayoutConstraint.activate([
+                stack.centerXAnchor.constraint(equalTo: content.centerXAnchor),
+                stack.centerYAnchor.constraint(equalTo: content.centerYAnchor)
+            ])
+        }
+    }
+
+    private func show() {
+        window.center()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func openConfig() {
+        NSWorkspace.shared.open(URL(fileURLWithPath: NSString(string: "~/.config/sol/config.json").expandingTildeInPath))
+    }
+
+    @objc private func openScripts() {
+        NSWorkspace.shared.open(URL(fileURLWithPath: NSString(string: "~/.config/sol/scripts").expandingTildeInPath))
+    }
+
+    func windowWillClose(_ notification: Notification) { Self.current = nil }
+}
+
 final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
     private static var current: ProcessKiller?
     private let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 460), styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -318,9 +420,11 @@ final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NS
         filteredRows = rows
         window.title = "Kill Process"
         window.delegate = self
+        Style.apply(to: window)
 
         searchField.delegate = self
         searchField.placeholderString = "Search processes"
+        searchField.textColor = Style.text
         searchField.target = self
         searchField.action = #selector(queryChanged)
 
@@ -332,8 +436,11 @@ final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NS
         tableView.dataSource = self
         tableView.doubleAction = #selector(killSelection)
         tableView.rowHeight = 44
+        tableView.backgroundColor = .clear
+        tableView.selectionHighlightStyle = .regular
 
         let scroll = NSScrollView(frame: .zero)
+        scroll.drawsBackground = false
         scroll.documentView = tableView
         scroll.hasVerticalScroller = true
 
@@ -360,6 +467,11 @@ final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NS
         searchField.becomeFirstResponder()
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if modifiers == .command, event.keyCode == 0 {
+                self.searchField.selectText(nil)
+                return nil
+            }
             switch event.keyCode {
             case 36:
                 self.killSelection()
@@ -408,6 +520,7 @@ final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NS
 
         let title = NSTextField(labelWithString: Self.processName(from: process.command))
         title.font = .systemFont(ofSize: 15, weight: .medium)
+        title.textColor = Style.text
 
         let stack = NSStackView(views: [icon, title])
         stack.orientation = .horizontal
