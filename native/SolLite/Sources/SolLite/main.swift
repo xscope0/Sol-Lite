@@ -90,9 +90,39 @@ final class AppIndex {
 
     private func utilityItems() -> [LauncherItem] {
         [
+            LauncherItem(title: "Empty Trash", subtitle: "Permanently empty the Trash") {
+                NSAppleScript(source: "tell application \"Finder\" to empty trash")?.executeAndReturnError(nil)
+            },
+            LauncherItem(title: "Copy Wi-Fi Password", subtitle: "Copy current network password to clipboard") {
+                Self.copyCurrentWiFiPassword()
+            },
             LauncherItem(title: "Kill Process", subtitle: "Open process killer", action: ProcessKiller.show),
             LauncherItem(title: "Reload Index", subtitle: "Refresh apps and scripts") { [weak self] in self?.reload() }
         ]
+    }
+
+    private static func copyCurrentWiFiPassword() {
+        let network = shell("/usr/sbin/networksetup", ["-getairportnetwork", "en0"])
+            .replacingOccurrences(of: "Current Wi-Fi Network: ", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !network.isEmpty else { return }
+        let password = shell("/usr/bin/security", ["find-generic-password", "-wa", network])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !password.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(password, forType: .string)
+    }
+
+    private static func shell(_ executable: String, _ arguments: [String]) -> String {
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        guard (try? process.run()) != nil else { return "" }
+        process.waitUntilExit()
+        return String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
     }
 }
 
@@ -101,6 +131,7 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
     private let tableView = NSTableView(frame: .zero)
     private let scrollView = NSScrollView(frame: .zero)
     private var items: [LauncherItem] = []
+    private var eventMonitor: Any?
     var onQuery: ((String) -> [LauncherItem])?
     var onOpen: ((LauncherItem) -> Void)?
 
@@ -127,10 +158,33 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         window.makeKeyAndOrderFront(nil)
         searchField.becomeFirstResponder()
         refresh()
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self else { return event }
+            switch event.keyCode {
+            case 36:
+                self.openSelection()
+                return nil
+            case 53:
+                self.hide()
+                return nil
+            case 125:
+                self.moveSelection(by: 1)
+                return nil
+            case 126:
+                self.moveSelection(by: -1)
+                return nil
+            default:
+                return event
+            }
+        }
     }
 
     func hide() {
         window?.orderOut(nil)
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
+        }
     }
 
     private func buildUI() {
@@ -187,20 +241,40 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         onOpen?(items[row])
     }
 
+    private func moveSelection(by delta: Int) {
+        guard !items.isEmpty else { return }
+        let selectedRow = tableView.selectedRow >= 0 ? tableView.selectedRow : 0
+        let nextRow = min(max(selectedRow + delta, 0), items.count - 1)
+        tableView.selectRowIndexes(IndexSet(integer: nextRow), byExtendingSelection: false)
+        tableView.scrollRowToVisible(nextRow)
+    }
+
     func numberOfRows(in tableView: NSTableView) -> Int { items.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let cell = NSTableCellView()
+        let icon = NSImageView(frame: .zero)
+        icon.image = itemIcon(for: items[row])
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
         let title = NSTextField(labelWithString: items[row].title)
         let subtitle = NSTextField(labelWithString: items[row].subtitle)
         subtitle.textColor = .secondaryLabelColor
         subtitle.font = .systemFont(ofSize: 11)
-        let stack = NSStackView(views: [title, subtitle])
-        stack.orientation = .vertical
-        stack.spacing = 2
+
+        let textStack = NSStackView(views: [title, subtitle])
+        textStack.orientation = .vertical
+        textStack.spacing = 2
+
+        let stack = NSStackView(views: [icon, textStack])
+        stack.orientation = .horizontal
+        stack.alignment = .centerY
+        stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
         cell.addSubview(stack)
         NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: 28),
+            icon.heightAnchor.constraint(equalToConstant: 28),
             stack.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 8),
             stack.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -8),
             stack.centerYAnchor.constraint(equalTo: cell.centerYAnchor)
@@ -208,14 +282,22 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         return cell
     }
 
+    private func itemIcon(for item: LauncherItem) -> NSImage {
+        if item.subtitle.hasSuffix(".app") {
+            return NSWorkspace.shared.icon(forFile: item.subtitle)
+        }
+        if item.subtitle.hasSuffix(".sh") || item.subtitle.hasSuffix(".applescript") || item.subtitle.hasSuffix(".scpt") {
+            return NSWorkspace.shared.icon(for: .unixExecutable)
+        }
+        return NSImage(systemSymbolName: "sparkle.magnifyingglass", accessibilityDescription: nil) ?? NSImage()
+    }
+
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 36: openSelection()
         case 53: hide()
-        case 125:
-            tableView.selectRowIndexes(IndexSet(integer: min(tableView.selectedRow + 1, max(items.count - 1, 0))), byExtendingSelection: false)
-        case 126:
-            tableView.selectRowIndexes(IndexSet(integer: max(tableView.selectedRow - 1, 0)), byExtendingSelection: false)
+        case 125: moveSelection(by: 1)
+        case 126: moveSelection(by: -1)
         default:
             super.keyDown(with: event)
         }
