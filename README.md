@@ -1,86 +1,85 @@
-# Sol
+# Sol Lite
 
 ![Header](Header.jpg)
 
-<br/>
-<div align="center">
-  <a align="center" href="https://twitter.com/ospfranco">
-    <img src="https://img.shields.io/twitter/follow/ospfranco?label=Follow%20%40ospfranco&style=social" />
-  </a>
-</div>
+Sol Lite is a minimal macOS launcher forked from [ospfranco/sol](https://github.com/ospfranco/sol).
 
-Sol is an open source app launcher, focused on ease of use and speed. It has minimal configuration and runs natively.
+This fork keeps Sol's fast native launcher core and removes bundled extras that duplicate dedicated tools.
 
-[Visit official site](https://sol.ospfranco.com)
+## Scope
+
+Kept:
+
+- App search
+- Custom scripts and links
+- Process killer
+- Utility actions such as UUID, NanoID, JSON formatting, math, Wi-Fi, IP, theme switching, and symlinks
+
+Removed:
+
+- Calendar
+- Translation
+- Clipboard manager
+- Emoji picker
+- Scratchpad
+- Browser bookmarks
+- Window management
+- Media key forwarding
+- In-app updater
+- Quit command
+
+## Hotkeys
+
+The app is installed as `Sol Lite.app`.
+
+Recommended Hammerspoon binding:
+
+```lua
+hs.hotkey.bind({ "cmd" }, "s", toggleSol)
+```
+
+This build also removes Sol's quit action and no-ops the native quit bridge so accidental `cmd+q` does not close the launcher.
 
 ## Download
 
-Install via brew
+Download the latest `.dmg` from GitHub Releases.
 
-```
-brew install --cask sol
-```
+## Build
 
-Or manually download the latest [release](https://github.com/ospfranco/sol/tree/main/releases).
+Requirements:
 
-## Discord
-
-Join the Discord
-
-https://discord.gg/W9XmqCQCKP
-
-## Features
-
-- App search
-- Custom shortcuts
-- Google translate
-- Calendar
-- Show upcoming appointement in Menu Bar
-- Custom AppleScript commands
-- Custom links
-- Imports browser bookmarks
-- Window Manager
-- Emoji picker
-- Clipboard manager
-- Notes Scratchpad
-- Retrieve Wi-Fi password
-- Show IP address
-- Start a google meet
-- Switch OS theme
-- Process killer
-- Generate NanoID
-- Generate UUID
-- Generate lorem ipsum
-- Format and paste JSON
-- Forward media keys to Spotify/Apple Music
-- Blacken Menu Bar
-- Quickly evaluate math operations
-- Script Runner
-- Symbolic Link Support
-
-## Contributing
-
-You need to set up your machine for macOS development with React Native. Basically you need to install:
-
-- Mise (https://mise.jdx.dev/)
-- Xcode
-- Cocoapods
-
-Follow any of the online tutorials to set up your machine for iOS/MacOS React Native development.
-
-Once you have everything installed run the following commands
+- macOS
+- Xcode 16+
+- Bun
+- Homebrew Ruby
+- CocoaPods
 
 ```sh
-mise plugin add cocoapods
-# To enable hooks
-mise settings experimental=true
-# Will install all bun, ruby and run the installation of dependencies
-mise install
-
-# You can then run the app with
-bun macos
+bun install
+env PATH="/opt/homebrew/opt/ruby/bin:$PATH" bun pods
+env SENTRY_DISABLE_AUTO_UPLOAD=true SENTRY_COPY_OPTIONS_FILE=false \
+  xcodebuild -workspace macos/sol.xcworkspace \
+  -scheme debug \
+  -configuration Release \
+  -destination 'platform=macOS,arch=arm64' \
+  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGN_IDENTITY=''
 ```
+
+The built app is produced at:
+
+```txt
+~/Library/Developer/Xcode/DerivedData/.../Build/Products/Release/sol.app
+```
+
+Rename/sign/package it as `Sol Lite.app` for distribution.
+
+## Upstream
+
+This project is an independent lightweight fork of Sol. Upstream project, copyright, and MIT license remain credited to Oscar Franco and contributors.
 
 ## License
 
 MIT License
+

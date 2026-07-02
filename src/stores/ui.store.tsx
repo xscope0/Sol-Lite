@@ -8,7 +8,6 @@ import {
 	normalizeShortcut,
 	normalizeShortcutMap,
 } from "lib/shortcuts";
-import { googleTranslate } from "lib/translator";
 import MiniSearch from "minisearch";
 import {
 	autorun,
@@ -59,14 +58,9 @@ let configDisposer: IReactionDisposer | undefined;
 export enum Widget {
 	ONBOARDING = "ONBOARDING",
 	SEARCH = "SEARCH",
-	CALENDAR = "CALENDAR",
-	TRANSLATION = "TRANSLATION",
 	SETTINGS = "SETTINGS",
 	CREATE_ITEM = "CREATE_ITEM",
 	GOOGLE_MAP = "GOOGLE_MAP",
-	SCRATCHPAD = "SCRATCHPAD",
-	EMOJIS = "EMOJIS",
-	CLIPBOARD = "CLIPBOARD",
 	PROCESSES = "PROCESSES",
 	FILE_SEARCH = "FILE_SEARCH",
 }
@@ -82,11 +76,6 @@ export enum ItemType {
 	PREFERENCE_PANE = "PREFERENCE_PANE",
 }
 
-export enum ScratchPadColor {
-	SYSTEM = "SYSTEM",
-	BLUE = "BLUE",
-	ORANGE = "ORANGE",
-}
 
 const minisearch = new MiniSearch({
 	fields: ["name", "localizedName", "alias", "type"],
@@ -129,12 +118,7 @@ const defaultSearchFolders = [
 export type UIStore = ReturnType<typeof createUIStore>;
 type SearchEngine = "google" | "bing" | "duckduckgo" | "perplexity" | "custom";
 
-const itemsThatShouldShowWindow = [
-	"emoji_picker",
-	"clipboard_manager",
-	"process_manager",
-	"scratchpad",
-];
+const itemsThatShouldShowWindow = ["process_manager"];
 
 type RankedItem = Item & {
 	score?: number;
@@ -253,28 +237,15 @@ export const createUIStore = (root: IRootStore) => {
 					}
 					store.history = src.history ?? [];
 
-					// Config.json is authoritative for persisted UI state
-					store.firstTranslationLanguage = src.firstTranslationLanguage ?? "en";
-					store.secondTranslationLanguage =
-						src.secondTranslationLanguage ?? "de";
-					store.thirdTranslationLanguage = src.thirdTranslationLanguage ?? null;
 					store.customItems = src.customItems ?? [];
 					store.globalShortcut = src.globalShortcut ?? "option";
 					store.showWindowOn = src.showWindowOn ?? "screenWithFrontmost";
-					store.calendarEnabled = src.calendarEnabled ?? true;
-					store.showAllDayEvents = src.showAllDayEvents ?? true;
 					store.launchAtLogin = src.launchAtLogin ?? true;
-					store.mediaKeyForwardingEnabled =
-						src.mediaKeyForwardingEnabled ?? true;
-					store.showUpcomingEvent = src.showUpcomingEvent ?? true;
-					store.scratchPadColor = src.scratchPadColor ?? ScratchPadColor.SYSTEM;
 					store.searchFolders = src.searchFolders ?? defaultSearchFolders;
 					store.searchEngine = src.searchEngine ?? "google";
 					store.customSearchUrl =
 						src.customSearchUrl ?? "https://google.com/search?q=%s";
 					store.shortcuts = applyShortcutNormalization(src.shortcuts);
-					store.showInAppBrowserBookMarks =
-						src.showInAppBrowserBookMarks ?? true;
 					store.hasDismissedGettingStarted =
 						src.hasDismissedGettingStarted ?? false;
 					store.hyperKeyEnabled = src.hyperKeyEnabled ?? false;
@@ -296,7 +267,6 @@ export const createUIStore = (root: IRootStore) => {
 				solNative.setLaunchAtLogin(src.launchAtLogin ?? true);
 				solNative.setGlobalShortcut(src.globalShortcut);
 				solNative.setShowWindowOn(src.showWindowOn ?? "screenWithFrontmost");
-				solNative.setMediaKeyForwardingEnabled(store.mediaKeyForwardingEnabled);
 				solNative.setHyperKeyEnabled(store.hyperKeyEnabled);
 				solNative.updateHotkeys(toJS(store.shortcuts));
 
@@ -328,30 +298,12 @@ export const createUIStore = (root: IRootStore) => {
 				if (jsonConfig.note !== undefined) store.note = jsonConfig.note;
 				if (jsonConfig.onboardingStep !== undefined)
 					store.onboardingStep = jsonConfig.onboardingStep;
-				if (jsonConfig.firstTranslationLanguage !== undefined)
-					store.firstTranslationLanguage = jsonConfig.firstTranslationLanguage;
-				if (jsonConfig.secondTranslationLanguage !== undefined)
-					store.secondTranslationLanguage =
-						jsonConfig.secondTranslationLanguage;
-				if (jsonConfig.thirdTranslationLanguage !== undefined)
-					store.thirdTranslationLanguage = jsonConfig.thirdTranslationLanguage;
 				if (jsonConfig.globalShortcut !== undefined)
 					store.globalShortcut = jsonConfig.globalShortcut;
 				if (jsonConfig.showWindowOn !== undefined)
 					store.showWindowOn = jsonConfig.showWindowOn;
-				if (jsonConfig.calendarEnabled !== undefined)
-					store.calendarEnabled = jsonConfig.calendarEnabled;
-				if (jsonConfig.showAllDayEvents !== undefined)
-					store.showAllDayEvents = jsonConfig.showAllDayEvents;
 				if (jsonConfig.launchAtLogin !== undefined)
 					store.launchAtLogin = jsonConfig.launchAtLogin;
-				if (jsonConfig.mediaKeyForwardingEnabled !== undefined)
-					store.mediaKeyForwardingEnabled =
-						jsonConfig.mediaKeyForwardingEnabled;
-				if (jsonConfig.showUpcomingEvent !== undefined)
-					store.showUpcomingEvent = jsonConfig.showUpcomingEvent;
-				if (jsonConfig.scratchPadColor !== undefined)
-					store.scratchPadColor = jsonConfig.scratchPadColor;
 				if (jsonConfig.searchFolders !== undefined)
 					store.searchFolders = jsonConfig.searchFolders;
 				if (jsonConfig.searchEngine !== undefined)
@@ -360,9 +312,6 @@ export const createUIStore = (root: IRootStore) => {
 					store.customSearchUrl = jsonConfig.customSearchUrl;
 				if (jsonConfig.shortcuts !== undefined)
 					store.shortcuts = applyShortcutNormalization(jsonConfig.shortcuts);
-				if (jsonConfig.showInAppBrowserBookMarks !== undefined)
-					store.showInAppBrowserBookMarks =
-						jsonConfig.showInAppBrowserBookMarks;
 				if (jsonConfig.hyperKeyEnabled !== undefined)
 					store.hyperKeyEnabled = jsonConfig.hyperKeyEnabled;
 				if (jsonConfig.customItems !== undefined)
@@ -374,7 +323,6 @@ export const createUIStore = (root: IRootStore) => {
 			solNative.setLaunchAtLogin(store.launchAtLogin);
 			solNative.setGlobalShortcut(store.globalShortcut);
 			solNative.setShowWindowOn(store.showWindowOn);
-			solNative.setMediaKeyForwardingEnabled(store.mediaKeyForwardingEnabled);
 			solNative.setHyperKeyEnabled(store.hyperKeyEnabled);
 			solNative.updateHotkeys(toJS(store.shortcuts));
 		} finally {
@@ -399,8 +347,6 @@ export const createUIStore = (root: IRootStore) => {
 		searchEngine: "google" as SearchEngine,
 		customSearchUrl: "https://google.com/search?q=%s" as string,
 		globalShortcut: "option" as "command" | "option" | "control",
-		scratchpadShortcut: "command" as "command" | "option" | "none",
-		clipboardManagerShortcut: "shift" as "shift" | "option" | "none",
 		showWindowOn: "screenWithFrontmost" as
 			| "screenWithFrontmost"
 			| "screenWithCursor",
@@ -415,29 +361,18 @@ export const createUIStore = (root: IRootStore) => {
 		isLoading: false,
 		isIndexing: false,
 		indexedFileResults: [] as Item[],
-		translationResults: [] as string[],
 		frequencies: {} as Record<string, number>,
 		selectionTimestamps: {} as Record<string, number>,
 		temporaryResult: null as TemporaryResult | null,
-		firstTranslationLanguage: "en" as string,
-		secondTranslationLanguage: "de" as string,
-		thirdTranslationLanguage: null as null | string,
-		calendarEnabled: true,
-		showAllDayEvents: true,
 		launchAtLogin: true,
 		hasFullDiskAccess: false,
 		bookmarks: [] as Item[],
-		mediaKeyForwardingEnabled: true,
 		targetHeight: 64,
 		isDarkMode: Appearance.getColorScheme() === "dark",
 		history: [] as string[],
 		historyPointer: 0,
-		showUpcomingEvent: true,
-		scratchPadColor: ScratchPadColor.SYSTEM,
 		searchFolders: [] as string[],
 		shortcuts: defaultShortcuts as Record<string, string>,
-		showInAppBrowserBookMarks: true,
-		hoveredEventId: null as string | null,
 		hasDismissedGettingStarted: false,
 		isVisible: false,
 		showKeyboardRecorder: false,
@@ -487,7 +422,6 @@ export const createUIStore = (root: IRootStore) => {
 				...baseItems,
 				...store.customItems,
 				...root.scripts.scripts,
-				...(store.showInAppBrowserBookMarks ? store.bookmarks : []),
 			];
 
 			// If the query is empty, return all items
@@ -555,38 +489,14 @@ export const createUIStore = (root: IRootStore) => {
 		//    / /\ \ / __| __| |/ _ \| '_ \/ __|
 		//   / ____ \ (__| |_| | (_) | | | \__ \
 		//  /_/    \_\___|\__|_|\___/|_| |_|___/
-		setHoveredEventId: (id: string | null) => {
-			store.hoveredEventId = id;
-		},
 		setHyperKeyEnabled: (enabled: boolean) => {
 			store.hyperKeyEnabled = enabled;
 			solNative.setHyperKeyEnabled(enabled);
-		},
-		rotateScratchPadColor: () => {
-			if (store.scratchPadColor === ScratchPadColor.SYSTEM) {
-				store.scratchPadColor = ScratchPadColor.BLUE;
-			} else if (store.scratchPadColor === ScratchPadColor.BLUE) {
-				store.scratchPadColor = ScratchPadColor.ORANGE;
-			} else {
-				store.scratchPadColor = ScratchPadColor.SYSTEM;
-			}
-		},
-		setShowUpcomingEvent: (v: boolean) => {
-			store.showUpcomingEvent = v;
-			solNative.setUpcomingEventEnabled(v && store.calendarEnabled);
 		},
 		recordItemSelection: (item: Item) => {
 			const previousCount = getSelectionCount(item);
 			store.frequencies[item.id] = previousCount + 1;
 			store.selectionTimestamps[item.id] = Date.now();
-		},
-		showEmojiPicker: () => {
-			store.query = "";
-			if (store.focusedWidget === Widget.EMOJIS) {
-				store.focusedWidget = Widget.SEARCH;
-			} else {
-				store.focusWidget(Widget.EMOJIS);
-			}
 		},
 		showSettings: () => {
 			store.setQuery("");
@@ -634,45 +544,13 @@ export const createUIStore = (root: IRootStore) => {
 		isItemDisabled: (itemId: string) => {
 			return store.disabledItemIds.includes(itemId);
 		},
-		translateQuery: async () => {
-			store.isLoading = true;
-			store.translationResults = [];
-			store.focusedWidget = Widget.TRANSLATION;
-			store.selectedIndex = 0;
-
-			try {
-				const translations = await googleTranslate(
-					store.firstTranslationLanguage,
-					store.secondTranslationLanguage,
-					store.thirdTranslationLanguage,
-					store.query,
-				);
-
-				runInAction(() => {
-					store.translationResults = translations;
-					store.isLoading = false;
-				});
-			} catch (_) {
-				runInAction(() => {
-					store.isLoading = false;
-				});
-			}
-		},
+		translateQuery: async () => {},
 		openKeyboardSettings: () => {
 			try {
 				Linking.openURL(`/System/Library/PreferencePanes/Keyboard.prefPane`);
 			} catch (e) {
 				console.error(`Could not open keyboard preferences ${e}`);
 			}
-		},
-		setFirstTranslationLanguage: (l: string) => {
-			store.firstTranslationLanguage = l;
-		},
-		setSecondTranslationLanguage: (l: string) => {
-			store.secondTranslationLanguage = l;
-		},
-		setThirdTranslationLanguage: (l: string) => {
-			store.thirdTranslationLanguage = l;
 		},
 		setOnboardingStep: (step: OnboardingStep) => {
 			store.onboardingStep = step;
@@ -830,24 +708,13 @@ export const createUIStore = (root: IRootStore) => {
 		onShow: ({ target }: { target?: string }) => {
 			store.getApps();
 			store.isVisible = true;
-			if (target != null) {
-				switch (target) {
-					case Widget.CLIPBOARD:
-						store.showClipboardManager();
-						return;
+			if (target === Widget.PROCESSES) {
+				store.showProcessManager();
+				return;
+			}
 
-					case Widget.SCRATCHPAD:
-						store.showScratchpad();
-						return;
-
-					case Widget.EMOJIS:
-						store.showEmojiPicker();
-						return;
-
-					case Widget.SETTINGS:
-						store.showSettings();
-						return;
-				}
+			if (target === Widget.SETTINGS) {
+				store.showSettings();
 				return;
 			}
 
@@ -871,7 +738,6 @@ export const createUIStore = (root: IRootStore) => {
 				store.setQuery("");
 			}
 			store.selectedIndex = 0;
-			store.translationResults = [];
 			store.historyPointer = 0;
 		},
 		cleanUp: () => {
@@ -884,10 +750,7 @@ export const createUIStore = (root: IRootStore) => {
 			bookmarksDisposer?.();
 			configDisposer?.();
 		},
-		getCalendarAccess: () => {
-			store.calendarAuthorizationStatus =
-				solNative.getCalendarAuthorizationStatus();
-		},
+		getCalendarAccess: () => {},
 		getAccessibilityStatus: () => {
 			solNative.getAccessibilityStatus().then((v) => {
 				runInAction(() => {
@@ -895,31 +758,9 @@ export const createUIStore = (root: IRootStore) => {
 				});
 			});
 		},
-		showScratchpad: () => {
-			if (store.focusedWidget === Widget.SCRATCHPAD) {
-				store.focusWidget(Widget.SEARCH);
-			} else {
-				store.focusWidget(Widget.SCRATCHPAD);
-			}
-		},
-		showClipboardManager: () => {
-			store.query = "";
-			if (store.focusedWidget === Widget.CLIPBOARD) {
-				store.focusWidget(Widget.SEARCH);
-			} else {
-				store.focusWidget(Widget.CLIPBOARD);
-			}
-		},
 		showProcessManager: () => {
 			store.query = "";
 			store.focusWidget(Widget.PROCESSES);
-		},
-		setCalendarEnabled: (v: boolean) => {
-			store.calendarEnabled = v;
-			solNative.setUpcomingEventEnabled(v && store.showUpcomingEvent);
-		},
-		setShowAllDayEvents: (v: boolean) => {
-			store.showAllDayEvents = v;
 		},
 		setLaunchAtLogin: (v: boolean) => {
 			store.launchAtLogin = v;
@@ -1054,10 +895,6 @@ export const createUIStore = (root: IRootStore) => {
 			});
 		},
 
-		setMediaKeyForwardingEnabled: (enabled: boolean) => {
-			store.mediaKeyForwardingEnabled = enabled;
-			solNative.setMediaKeyForwardingEnabled(enabled);
-		},
 
 		setTargetHeight: (height: number) => {
 			store.targetHeight = height;
@@ -1136,7 +973,6 @@ export const createUIStore = (root: IRootStore) => {
 				...baseItems,
 				...store.customItems,
 				...root.scripts.scripts,
-				...(store.showInAppBrowserBookMarks ? store.bookmarks : []),
 			].find((i) => i.id === id);
 
 			if (item == null) {
@@ -1203,9 +1039,6 @@ export const createUIStore = (root: IRootStore) => {
 			solNative.setWindowHeight(e.nativeEvent.layout.height);
 		},
 
-		setShowInAppBrowserBookmarks: (v: boolean) => {
-			store.showInAppBrowserBookMarks = v;
-		},
 
 		// Old custom items are not migrated to the new format which has an id
 		// This function is used to migrate the old custom items to the new format
@@ -1293,24 +1126,16 @@ export const createUIStore = (root: IRootStore) => {
 		reloadJsonConfig,
 	});
 
-	bookmarksDisposer = reaction(
-		() => [store.showInAppBrowserBookMarks],
-		() => {
-			minisearch.removeAll();
-		},
-	);
+	bookmarksDisposer = undefined;
 
 	hydrate().then(() => {
 		configDisposer = autorun(() => {
 			getPersistedUISnapshot();
 			persistToJson();
 		});
-		store.getCalendarAccess();
 		store.getAccessibilityStatus();
 		store.getFullDiskAccessStatus();
-		solNative.setUpcomingEventEnabled(
-			store.showUpcomingEvent && store.calendarEnabled,
-		);
+		solNative.setUpcomingEventEnabled(false);
 
 		if (store.searchFolders.length > 0) {
 			if (!solNative.hasIndexedContent()) {

@@ -4,22 +4,13 @@ const CONFIG_DIRECTORY_PATH = `/Users/${solNative.userName()}/.config/sol`;
 const SCRIPTS_DIRECTORY_PATH = `${CONFIG_DIRECTORY_PATH}/scripts`;
 
 export const PORTABLE_KEYS = [
-	"firstTranslationLanguage",
-	"secondTranslationLanguage",
-	"thirdTranslationLanguage",
 	"globalShortcut",
 	"showWindowOn",
-	"calendarEnabled",
-	"showAllDayEvents",
 	"launchAtLogin",
-	"mediaKeyForwardingEnabled",
-	"showUpcomingEvent",
-	"scratchPadColor",
 	"searchFolders",
 	"searchEngine",
 	"customSearchUrl",
 	"shortcuts",
-	"showInAppBrowserBookMarks",
 	"hasDismissedGettingStarted",
 	"hyperKeyEnabled",
 	"customItems",

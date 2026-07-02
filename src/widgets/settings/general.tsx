@@ -175,50 +175,6 @@ export const General = observer(() => {
 						]}
 					/>
 				</View>
-				<View className="border-t border-lightBorder dark:border-darkBorder z-0" />
-				<View className="flex-row items-center">
-					<Text className="flex-1">Show In-App Calendar</Text>
-					<MySwitch
-						value={store.ui.calendarEnabled}
-						onValueChange={store.ui.setCalendarEnabled}
-					/>
-				</View>
-				<View className="border-t border-lightBorder dark:border-darkBorder" />
-				<View className="flex-row items-center">
-					<Text className="flex-1">Show Browser Bookmarks</Text>
-					<MySwitch
-						value={store.ui.showInAppBrowserBookMarks}
-						onValueChange={store.ui.setShowInAppBrowserBookmarks}
-					/>
-				</View>
-				<View className="border-t border-lightBorder dark:border-darkBorder" />
-				<View className="flex-row items-center">
-					<Text className="flex-1">Show upcoming event in Menu Bar</Text>
-					<MySwitch
-						value={store.ui.showUpcomingEvent}
-						onValueChange={store.ui.setShowUpcomingEvent}
-					/>
-				</View>
-				<View className="border-t border-lightBorder dark:border-darkBorder" />
-				<View className="flex-row items-center">
-					<Text className="flex-1">Save clipboard history</Text>
-					<MySwitch
-						value={store.clipboard.saveHistory}
-						onValueChange={store.clipboard.setSaveHistory}
-					/>
-				</View>
-				<View className="border-t border-lightBorder dark:border-darkBorder" />
-				<View className="flex-row items-center">
-					<Text className="flex-1">Forward Media Keys to Music Player</Text>
-					<MySwitch
-						value={store.ui.mediaKeyForwardingEnabled}
-						onValueChange={() => {
-							store.ui.setMediaKeyForwardingEnabled(
-								!store.ui.mediaKeyForwardingEnabled,
-							);
-						}}
-					/>
-				</View>
 			</View>
 			<View className="flex-row items-center p-3 subBg rounded-lg border border-lightBorder dark:border-darkBorder">
 				<View className="flex-1">

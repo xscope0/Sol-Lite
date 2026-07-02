@@ -1,29 +1,14 @@
-import { extractMeetingLink } from "lib/calendar";
 import { solNative } from "lib/SolNative";
 import { makeAutoObservable } from "mobx";
 import { Clipboard, type EmitterSubscription, Linking } from "react-native";
 import type { IRootStore } from "store";
 import { isValidCustomSearchEngineUrl } from "widgets/settings/general";
-import { EMOJI_ROW_SIZE } from "./emoji.store";
 import { ItemType, Widget } from "./ui.store";
 import { formatTemporaryResultForClipboard } from "./ui.store.helpers";
 
 let keyDownListener: EmitterSubscription | undefined;
 let keyUpListener: EmitterSubscription | undefined;
 
-function isImageClipboardPath(path: string | null | undefined) {
-	if (!path) {
-		return false;
-	}
-	const lower = path.toLowerCase();
-	return (
-		lower.endsWith(".png") ||
-		lower.endsWith(".jpg") ||
-		lower.endsWith(".jpeg") ||
-		lower.endsWith(".tif") ||
-		lower.endsWith(".tiff")
-	);
-}
 
 export type KeystrokeStore = ReturnType<typeof createKeystrokeStore>;
 
@@ -73,12 +58,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 						return;
 					}
 
-					if (root.ui.focusedWidget === Widget.CLIPBOARD) {
-						if (shift) {
-							root.clipboard.deleteItem(root.ui.selectedIndex);
-						}
-						return;
-					}
 					break;
 				}
 				// "e" key
@@ -96,21 +75,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 				}
 				// tab key
 				case 48: {
-					switch (root.ui.focusedWidget) {
-						//   case Widget.SEARCH:
-						//     if (!!root.calendar.filteredEvents.length) {
-						//       root.ui.selectedIndex = 0
-						//       root.ui.focusedWidget = Widget.CALENDAR
-						//     }
-						//     break
-
-						//   case Widget.CALENDAR:
-						//     root.ui.selectedIndex = 0
-						//     root.ui.focusedWidget = Widget.SEARCH
-						//     break
-						case Widget.SCRATCHPAD:
-							root.ui.rotateScratchPadColor();
-					}
 
 					break;
 				}
@@ -155,49 +119,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 							);
 							break;
 						}
-						case Widget.CLIPBOARD: {
-							if (root.clipboard.clipboardItems.length === 0) {
-								return;
-							}
-
-							const entry =
-								root.clipboard.clipboardItems[root.ui.selectedIndex];
-
-							const originalIndex = root.clipboard.clipboardItems.findIndex(
-								(e) => entry === e,
-							);
-
-							root.clipboard.popToTop(originalIndex);
-
-							if (entry) {
-								if (meta) {
-									try {
-										Linking.openURL(entry.text);
-									} catch (e) {
-										// console.log('could not open in browser')
-									}
-									solNative.hideWindow();
-								} else {
-									if (isImageClipboardPath(entry.url)) {
-										solNative.pasteImageToFrontmostApp(entry.url as string);
-									} else {
-										solNative.pasteToFrontmostApp(entry.text);
-									}
-								}
-							}
-
-							break;
-						}
-
-						case Widget.EMOJIS: {
-							root.emoji.insert(root.ui.selectedIndex);
-							break;
-						}
-
-						// Enter listener is disabled while using the scratch pad
-						case Widget.SCRATCHPAD: {
-							break;
-						}
 
 						case Widget.ONBOARDING: {
 							switch (root.ui.onboardingStep) {
@@ -224,54 +145,8 @@ export const createKeystrokeStore = (root: IRootStore) => {
 							break;
 						}
 
-						case Widget.CALENDAR: {
-							const event = root.calendar.filteredEvents[root.ui.selectedIndex];
-							if (event) {
-								let eventLink: string | null | undefined = event.url;
-
-								if (!eventLink) {
-									eventLink = extractMeetingLink(event.notes, event.location);
-								}
-
-								if (eventLink) {
-									Linking.openURL(eventLink);
-								} else {
-									Linking.openURL("ical://");
-								}
-							} else {
-								Linking.openURL("ical://");
-							}
-							solNative.hideWindow();
-							break;
-						}
-
-						case Widget.TRANSLATION: {
-							if (root.ui.translationResults) {
-								Clipboard.setString(
-									root.ui.translationResults[root.ui.selectedIndex],
-								);
-								solNative.hideWindow();
-								root.ui.translationResults = [];
-							}
-							break;
-						}
 
 						case Widget.SEARCH: {
-							if (
-								!root.ui.query &&
-								root.ui.calendarAuthorizationStatus === "notDetermined"
-							) {
-								solNative
-									.requestCalendarAccess()
-									.then(() => {
-										root.ui.getCalendarAccess();
-									})
-									.catch((e) => {
-										root.ui.getCalendarAccess();
-									});
-								solNative.hideWindow();
-								return;
-							}
 
 							if (!root.ui.query && !root.ui.isAccessibilityTrusted) {
 								solNative.requestAccessibilityAccess();
@@ -294,18 +169,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 									return;
 								}
 
-								if (
-									!!root.calendar.upcomingEvent &&
-									root.calendar.upcomingEvent.eventStatus !== 3
-								) {
-									if (root.calendar.upcomingEvent.eventLink) {
-										Linking.openURL(root.calendar.upcomingEvent.eventLink);
-									} else {
-										Linking.openURL("ical://");
-									}
-
-									return;
-								}
 
 								return;
 							}
@@ -319,10 +182,7 @@ export const createKeystrokeStore = (root: IRootStore) => {
 
 							root.ui.addToHistory(root.ui.query);
 
-							if (shift) {
-								root.ui.translateQuery();
-								return;
-							}
+
 
 							// If there are no visible items, or if the query is a meta (⌘ is pressed) query, open a browser search
 							if (!root.ui.searchItems.length || meta) {
@@ -479,9 +339,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 
 					switch (root.ui.focusedWidget) {
 						case Widget.SEARCH:
-						case Widget.EMOJIS:
-						case Widget.SCRATCHPAD:
-						case Widget.CLIPBOARD:
 						case Widget.GOOGLE_MAP:
 							solNative.hideWindow();
 							break;
@@ -495,185 +352,14 @@ export const createKeystrokeStore = (root: IRootStore) => {
 					break;
 				}
 
-				// left key
-				case 123: {
-					switch (root.ui.focusedWidget) {
-						case Widget.TRANSLATION: {
-							root.ui.selectedIndex = Math.max(0, root.ui.selectedIndex - 1);
-							break;
-						}
-
-						case Widget.CALENDAR:
-							// const selectedEvent =
-							//   root.calendar.filteredEvents[root.ui.selectedIndex]
-							// let groupIndex = -1
-							// let itemIndex = -1
-							// let groups = root.calendar.groupedEvents
-							// for (let ii = 0; ii < groups.length; ii++) {
-							//   const group = groups[ii]
-							//   for (let jj = 0; jj < group.data.length; jj++) {
-							//     const event = group.data[jj]
-							//     if (event.id === selectedEvent.id) {
-							//       itemIndex = jj
-							//       groupIndex = ii
-							//     }
-							//   }
-							// }
-
-							// if (groupIndex === -1 || itemIndex === -1) {
-							//   throw new Error('Could not find Item something is wrong')
-							// }
-
-							// let nextGroupIndex = groupIndex - 1
-
-							// while (
-							//   nextGroupIndex >= 0 &&
-							//   !groups[nextGroupIndex].data.length
-							// ) {
-							//   nextGroupIndex--
-							// }
-
-							// if (nextGroupIndex === -1) {
-							//   return
-							// }
-
-							// itemIndex = Math.min(
-							//   groups[nextGroupIndex].data.length - 1,
-							//   itemIndex,
-							// )
-
-							// if (itemIndex === -1) {
-							//   return
-							// }
-
-							// const nextEvent = groups[nextGroupIndex].data[itemIndex]
-							// const nextIndex = root.calendar.filteredEvents.findIndex(
-							//   e => e.id === nextEvent.id,
-							// )
-
-							// root.ui.selectedIndex = nextIndex
-
-							break;
-
-						case Widget.EMOJIS: {
-							if (root.emoji.emojis.length === 0) {
-								return;
-							}
-
-							const totalSize =
-								(root.emoji.emojis.length - 1) * EMOJI_ROW_SIZE +
-								root.emoji.emojis[root.emoji.emojis.length - 1].length;
-
-							if (root.ui.selectedIndex === 0) {
-								if (root.emoji.emojis.length > EMOJI_ROW_SIZE - 1) {
-									root.ui.selectedIndex = EMOJI_ROW_SIZE - 1;
-								} else {
-									root.ui.selectedIndex = totalSize - 1;
-								}
-							} else {
-								root.ui.selectedIndex = root.ui.selectedIndex - 1;
-							}
-
-							break;
-						}
-					}
+				// left/right arrows are unused in Sol Lite.
+				case 123:
+				case 124:
 					break;
-				}
-
-				// right key
-				case 124: {
-					switch (root.ui.focusedWidget) {
-						case Widget.TRANSLATION: {
-							const modulo = root.ui.thirdTranslationLanguage !== null ? 3 : 2;
-							root.ui.selectedIndex = (root.ui.selectedIndex + 1) % modulo;
-							break;
-						}
-
-						case Widget.CALENDAR: {
-							const selectedEvent =
-								root.calendar.filteredEvents[root.ui.selectedIndex];
-							let groupIndex = -1;
-							let itemIndex = -1;
-							const groups = Object.values(root.calendar.groupedEvents);
-							for (let ii = 0; ii < groups.length; ii++) {
-								const group = groups[ii];
-								for (let jj = 0; jj < group.data.length; jj++) {
-									const event = group.data[jj];
-									if (event.id === selectedEvent.id) {
-										itemIndex = jj;
-										groupIndex = ii;
-									}
-								}
-							}
-
-							if (groupIndex === -1 || itemIndex === -1) {
-								throw new Error("Could not find event something is wrong");
-							}
-
-							let nextGroupIndex = groupIndex + 1;
-
-							while (
-								nextGroupIndex < groups.length &&
-								!groups[nextGroupIndex].data.length
-							) {
-								nextGroupIndex++;
-							}
-
-							if (nextGroupIndex === groups.length) {
-								return;
-							}
-
-							itemIndex = Math.min(
-								groups[nextGroupIndex].data.length - 1,
-								itemIndex,
-							);
-
-							if (itemIndex === -1) {
-								return;
-							}
-
-							const nextEvent = groups[nextGroupIndex].data[itemIndex];
-							const nextIndex = root.calendar.filteredEvents.findIndex(
-								(e) => e.id === nextEvent.id,
-							);
-
-							root.ui.selectedIndex = nextIndex;
-
-							break;
-						}
-
-						case Widget.EMOJIS: {
-							if (root.emoji.emojis.length === 0) {
-								return;
-							}
-
-							const totalSize =
-								(root.emoji.emojis.length - 1) * EMOJI_ROW_SIZE +
-								root.emoji.emojis[root.emoji.emojis.length - 1].length;
-
-							if (root.ui.selectedIndex + 1 === totalSize) {
-								root.ui.selectedIndex = 0;
-							} else {
-								root.ui.selectedIndex += 1;
-							}
-							break;
-						}
-					}
-					break;
-				}
 
 				// up key
 				case 126: {
 					switch (root.ui.focusedWidget) {
-						case Widget.SCRATCHPAD:
-							break;
-
-						case Widget.EMOJIS:
-							root.ui.selectedIndex = Math.max(
-								root.ui.selectedIndex - EMOJI_ROW_SIZE,
-								0,
-							);
-							break;
 
 						case Widget.ONBOARDING:
 							root.ui.selectedIndex = Math.max(0, root.ui.selectedIndex - 1);
@@ -714,13 +400,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 				// down key
 				case 125: {
 					switch (root.ui.focusedWidget) {
-						case Widget.CLIPBOARD: {
-							root.ui.selectedIndex = Math.min(
-								root.ui.selectedIndex + 1,
-								root.clipboard.items.length - 1,
-							);
-							break;
-						}
 
 						case Widget.ONBOARDING:
 							root.ui.selectedIndex = Math.min(2, root.ui.selectedIndex + 1);
@@ -734,44 +413,6 @@ export const createKeystrokeStore = (root: IRootStore) => {
 							}
 							break;
 
-						case Widget.EMOJIS: {
-							const rowIndex = Math.floor(
-								root.ui.selectedIndex / EMOJI_ROW_SIZE,
-							);
-							const columnIndex = root.ui.selectedIndex % EMOJI_ROW_SIZE;
-
-							if (
-								rowIndex + 1 < root.emoji.emojis.length &&
-								columnIndex < root.emoji.emojis[rowIndex + 1].length
-							) {
-								root.ui.selectedIndex = root.ui.selectedIndex + EMOJI_ROW_SIZE;
-							} else {
-								root.ui.selectedIndex = columnIndex;
-							}
-							break;
-						}
-
-						case Widget.SEARCH: {
-							root.ui.selectedIndex = Math.min(
-								root.ui.items.length - 1,
-								root.ui.selectedIndex + 1,
-							);
-							break;
-						}
-
-						case Widget.CALENDAR: {
-							root.ui.selectedIndex = Math.min(
-								root.calendar.filteredEvents.length - 1,
-								root.ui.selectedIndex + 1,
-							);
-							break;
-						}
-
-						case Widget.TRANSLATION: {
-							const modulo = root.ui.thirdTranslationLanguage !== null ? 3 : 2;
-							root.ui.selectedIndex = (root.ui.selectedIndex + 1) % modulo;
-							break;
-						}
 
 						case Widget.PROCESSES: {
 							root.ui.selectedIndex = Math.min(

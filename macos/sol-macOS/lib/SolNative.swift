@@ -320,9 +320,7 @@ class SolNative: RCTEventEmitter {
     HotKeyManager.shared.catchEnterPress = false
   }
 
-  @objc func checkForUpdates() {
-    appDelegate?.checkForUpdates()
-  }
+  @objc func checkForUpdates() {}
 
   @objc func setWindowRelativeSize(_ relative: NSNumber) {
     DispatchQueue.main.async {
@@ -407,11 +405,7 @@ class SolNative: RCTEventEmitter {
     resolve(bookmarks)
   }
 
-  @objc func quit() {
-    DispatchQueue.main.async {
-      NSApplication.shared.terminate(self)
-    }
-  }
+  @objc func quit() {}
 
   @objc func setStatusBarItemTitle(_ title: String) {
     StatusBarItemManager.shared.setStatusBarTitle(title)
