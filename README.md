@@ -1,81 +1,55 @@
 # Sol Lite
 
-![Header](Header.jpg)
+Sol Lite is a native Swift/AppKit macOS launcher fork inspired by [ospfranco/sol](https://github.com/ospfranco/sol).
 
-Sol Lite is a minimal macOS launcher forked from [ospfranco/sol](https://github.com/ospfranco/sol).
-
-This fork keeps Sol's fast native launcher core and removes bundled extras that duplicate dedicated tools.
+This branch removes the React Native, JavaScript, CocoaPods, Sparkle, and Sentry stack. The app is offline-first and ships as one small AppKit bundle.
 
 ## Scope
 
-Kept:
+Kept for native v1:
 
-- App search
-- Custom scripts and links
+- App search from `/Applications`, `/System/Applications`, and `~/Applications`
+- User scripts from `~/.config/sol/scripts` (`.sh`, `.applescript`, `.scpt`)
 - Process killer
-- Utility actions such as UUID, NanoID, JSON formatting, math, Wi-Fi, IP, theme switching, and symlinks
+- Native `cmd+s` launcher hotkey
+- Accidental quit protection
 
 Removed:
 
-- Calendar
-- Translation
-- Clipboard manager
-- Emoji picker
-- Scratchpad
-- Browser bookmarks
-- Window management
-- Media key forwarding
-- In-app updater
-- Telemetry and crash reporting
-- Sparkle/update checks
-- About/developer credits screen
-- Quit command
-
-## Hotkeys
-
-The app is installed as `Sol Lite.app`.
-
-Native hotkey: `cmd+s`. No Hammerspoon or skhd dependency is required.
-
-This build also removes Sol's quit action and no-ops the native quit bridge so accidental `cmd+q` does not close the launcher.
-
-## Download
-
-Download the latest `.dmg` from GitHub Releases.
+- React Native, JavaScript, Hermes, Metro, Bun runtime, CocoaPods
+- Calendar, translation, clipboard manager, emoji picker, scratchpad
+- Browser bookmarks, file indexer, window management, media key forwarding
+- In-app updater, Sparkle/update checks, telemetry/crash reporting
+- About/developer credits screen and quit command
 
 ## Build
 
 Requirements:
 
 - macOS
-- Xcode 16+
-- Bun
-- Homebrew Ruby
-- CocoaPods
+- Xcode command line tools
 
 ```sh
-bun install
-env PATH="/opt/homebrew/opt/ruby/bin:$PATH" bundle exec pod install --project-directory=macos
-xcodebuild -workspace macos/sol.xcworkspace \
-  -scheme debug \
-  -configuration Release \
-  -destination 'platform=macOS,arch=arm64' \
-  CODE_SIGNING_ALLOWED=NO \
-  CODE_SIGNING_REQUIRED=NO \
-  CODE_SIGN_IDENTITY=''
+native/SolLite/build.sh
 ```
 
 The built app is produced at:
 
 ```txt
-~/Library/Developer/Xcode/DerivedData/.../Build/Products/Release/sol.app
+native/SolLite/build/Sol Lite.app
 ```
 
-Rename/sign/package it as `Sol Lite.app` for distribution.
+Install locally:
+
+```sh
+rm -rf '/Applications/Sol Lite.app'
+cp -R 'native/SolLite/build/Sol Lite.app' '/Applications/Sol Lite.app'
+open -a 'Sol Lite'
+```
 
 ## Upstream
 
-This project is an independent lightweight fork of Sol. Upstream project, copyright, and MIT license remain credited to Oscar Franco and contributors.
+This project is an independent lightweight native fork of Sol. Upstream project, copyright, and MIT license remain credited to Oscar Franco and contributors.
 
 ## License
 
