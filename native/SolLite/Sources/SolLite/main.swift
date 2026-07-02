@@ -115,6 +115,16 @@ final class AppIndex {
             },
             LauncherItem(title: "Kill Process", subtitle: "Open process killer", action: ProcessKiller.show),
             LauncherItem(title: "Settings", subtitle: Self.configURL.path, action: SettingsWindow.show),
+            LauncherItem(title: "System Settings", subtitle: "Open macOS System Settings") {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
+            },
+            LauncherItem(title: "Wallpaper Settings", subtitle: "Open Wallpaper settings") {
+                Self.openSystemSettings("com.apple.Wallpaper-Settings.extension")
+            },
+            LauncherItem(title: "Bluetooth Settings", subtitle: "Open Bluetooth settings") {
+                Self.openSystemSettings("com.apple.BluetoothSettings")
+            },
+            LauncherItem(title: "Restart", subtitle: "Restart this Mac", action: Self.restartMac),
             LauncherItem(title: "Scripts Folder", subtitle: Self.scriptsURL.path) { NSWorkspace.shared.open(Self.scriptsURL) },
             LauncherItem(title: "Reload Index", subtitle: "Refresh apps and scripts") { [weak self] in self?.reload() }
         ]
@@ -142,6 +152,18 @@ final class AppIndex {
         let alert = NSAlert()
         alert.messageText = message
         alert.runModal()
+    }
+
+    private static func openSystemSettings(_ pane: String) {
+        guard let url = URL(string: "x-apple.systempreferences:\(pane)") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private static func restartMac() {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", "tell application \"System Events\" to restart"]
+        try? process.run()
     }
 
     private static func copyCurrentWiFiPassword() {
