@@ -206,7 +206,7 @@ enum Style {
     }
 }
 
-final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
+final class LauncherPanel: NSWindowController, NSWindowDelegate, NSSearchFieldDelegate, NSTableViewDataSource, NSTableViewDelegate {
     private let searchField = NSSearchField(frame: .zero)
     private let tableView = NSTableView(frame: .zero)
     private let scrollView = NSScrollView(frame: .zero)
@@ -224,6 +224,7 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
         Style.apply(to: window)
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         super.init(window: window)
+        window.delegate = self
         buildUI()
         refresh()
     }
@@ -274,6 +275,11 @@ final class LauncherPanel: NSWindowController, NSSearchFieldDelegate, NSTableVie
             NSEvent.removeMonitor(eventMonitor)
             self.eventMonitor = nil
         }
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        hide()
+        return false
     }
 
     private func buildUI() {
@@ -617,7 +623,18 @@ final class ProcessKiller: NSObject, NSWindowDelegate, NSTableViewDataSource, NS
         }
         Self.current = nil
     }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        window.orderOut(nil)
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
+        }
+        Self.current = nil
+        return false
+    }
 }
+
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotKey = HotKey()
@@ -634,6 +651,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         panel.hide()
         return .terminateCancel
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
     }
 }
 
